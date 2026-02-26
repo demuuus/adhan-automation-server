@@ -1,5 +1,4 @@
 # 🕌 Adhan Automation Server
-
 A lightweight Linux-based Adhan automation system that:
 - Fetches daily prayer times via API
 - Plays Adhan automatically at each prayer time
@@ -13,13 +12,13 @@ Designed to run on:
 - Linux home servers
 
 ## ⚙️ Features
-- ✅ Automatic daily prayer time fetch (Aladhan API)
-- ✅ Offline fallback using cached data
-- ✅ 2-minute pre-Adhan reminder
-- ✅ Systemd auto-start support
-- ✅ Automatic daily refresh at 00:01
-- ✅ Crash recovery (Restart=always)
-- ✅ SSH CLI mode to check prayer times
+- Automatic daily prayer time fetch (Aladhan API)
+- Offline fallback using cached data
+- 2-minute pre-Adhan reminder
+- Systemd auto-start support
+- Automatic daily refresh at 00:01
+- Crash recovery (Restart=always)
+- SSH CLI mode to check prayer times
 
 ## 📁 Project Structure
 ```
@@ -30,35 +29,35 @@ adhan/
 ├── requirements.txt
 ├── logs/
 │  └── cache.json
+│
 └── audio/
     ├── Adzan Mekkah.mp3
     └── reminder.mp3
 ```
 
-## 🔧 Installation (Linux)
-
-### 1️⃣ Install System Dependencies
-```
-sudo apt update
-sudo apt install python3 python3-venv mpg123 alsa-utils
-```
-
-### 2️⃣ Clone Repository
+## 🔧 Installation Guide (Linux)
+### 1. Clone Repository
 ```
 git clone https://github.com/YOUR_USERNAME/adhan-automation-server.git
 cd adhan-automation-server
 ```
 
-### 3️⃣ Create Virtual Environment
+### 2. Create Virtual Environment
 ```
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4️⃣ Configure Location
+### 3. Install Dependencies
+```
+sudo apt update
+sudo apt install python3 python3-venv mpg123 alsa-utils
+```
+
+### 4. Configure Location
 Edit:
-config.json
+***```config.json```***
 
 Example JSON:
 ```
@@ -68,6 +67,12 @@ Example JSON:
     "method": 2
 }
 ```
+
+### 5. Run the Bot
+```
+python3 adhan.py
+```
+
 ## 🔄 Run as Systemd Service
 Create:
 ```
