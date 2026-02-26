@@ -1,3 +1,8 @@
+![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
+![Platform](https://img.shields.io/badge/Platform-Linux-green)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+![Status](https://img.shields.io/badge/Status-Stable-brightgreen)
+
 # 🕌 Adhan Automation Server
 A lightweight Linux-based Adhan automation system that:
 - Fetches daily prayer times via API
