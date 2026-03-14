@@ -98,7 +98,8 @@ def load_cached_times():
 # AUDIO
 # =========================
 def play_adhan(prayer_name):
-    logging.info(f"Playing adhan for {prayer_name}")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logging.info(f"ADHAN STARTED for {prayer_name} at {now}")
 
     audio_path = AUDIO_DIR / "Adzan Mekkah.mp3"
 
@@ -107,9 +108,11 @@ def play_adhan(prayer_name):
         return
 
     subprocess.run(["mpg123", str(audio_path)])
+    logging.info(f"ADHAN FINISHED for {prayer_name}")
 
 def play_reminder(prayer_name):
-    logging.info(f"Reminder before {prayer_name}")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logging.info(f"REMINDER triggered for {prayer_name} at {now}")
 
     audio_path = AUDIO_DIR / "reminder.mp3"
 
@@ -131,7 +134,19 @@ def get_reminder_time(time_str, minutes_before=2):
 # SCHEDULER
 # =========================
 def schedule_prayers():
+    today = datetime.now().date()
+
+    # Prevent API spam by checking cache file date
+    if CACHE_FILE.exists():
+        cache_mtime = datetime.fromtimestamp(CACHE_FILE.stat().st_mtime).date()
+        if cache_mtime == today:
+            logging.info("Schedule already refreshed today — skipping API call")
+            return
+
     schedule.clear()
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logging.info(f"=== REFRESHING DAILY PRAYER SCHEDULE at {now} ===")
 
     config = load_config()
     timings = get_prayer_times(config)
@@ -141,23 +156,19 @@ def schedule_prayers():
 
     for prayer in prayers:
         time_str = timings[prayer][:5]
-
-        # Main adhan
+        
         schedule.every().day.at(time_str).do(play_adhan, prayer_name=prayer)
         logging.info(f"Scheduled {prayer} at {time_str}")
-        print(f"Scheduled {prayer} at {time_str}")
-
-        # Reminder (2 minutes before)
+        
         reminder_time = get_reminder_time(time_str, 2)
-
-        # Handle cross-day edge case
+        
         if reminder_time > time_str:
             logging.warning(f"Skipping reminder for {prayer} (cross-day issue)")
         else:
             schedule.every().day.at(reminder_time).do(play_reminder, prayer_name=prayer)
             logging.info(f"Reminder for {prayer} at {reminder_time}")
-            print(f"Reminder for {prayer} at {reminder_time}")
-
+            
+    logging.info(f"Schedule updated successfully for {today}")
     logging.info("=== DAILY REFRESH COMPLETE ===")
 
 # =========================
@@ -166,18 +177,78 @@ def schedule_prayers():
 def show_prayer_times():
     config = load_config()
     timings = get_prayer_times(config)
+    today = datetime.now().strftime("%A, %d %B %Y")
 
     print("\n=== Today's Prayer Times (LIVE API) ===")
+    print(f"Location: {config['city']}, {config['country']}")
+    print(f"Date: {today}\n")
+
     for prayer in ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"]:
         print(f"{prayer:8} : {timings[prayer]}")
 
 def show_cached_times():
     timings = load_cached_times()
+    today = datetime.now().strftime("%A, %d %B %Y")
 
     print("\n=== Cached Prayer Times ===")
+    print(f"Date: {today}\n")
+
     for prayer in ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"]:
         print(f"{prayer:8} : {timings[prayer]}")
 
+def show_status():
+    config = load_config()
+    timings = load_cached_times()
+
+    now = datetime.now()
+    today = now.strftime("%A, %d %B %Y")
+
+    prayers = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"]
+
+    next_prayer = None
+    next_time = None
+
+    for prayer in prayers:
+        t = datetime.strptime(timings[prayer][:5], "%H:%M").replace(
+            year=now.year,
+            month=now.month,
+            day=now.day
+        )
+
+        if t > now:
+            next_prayer = prayer
+            next_time = t
+            break
+
+    if next_prayer is None:
+        next_prayer = "Fajr (tomorrow)"
+        t = datetime.strptime(timings["Fajr"][:5], "%H:%M")
+        next_time = t.replace(
+            year=now.year,
+            month=now.month,
+            day=now.day
+        ) + timedelta(days=1)
+
+    countdown = next_time - now
+    hours, remainder = divmod(int(countdown.total_seconds()), 3600)
+    minutes, _ = divmod(remainder, 60)
+
+    print("\n=== Adhan System Status ===")
+    print(f"Location     : {config['city']}, {config['country']}")
+    print(f"Date         : {today}")
+    print("")
+    print(f"Next Prayer  : {next_prayer}")
+    print(f"Time         : {next_time.strftime('%H:%M')}")
+    print(f"Countdown    : {hours:02d}h {minutes:02d}m")
+    print("")
+    print(f"Schedule Src : cache.json")
+    
+    if CACHE_FILE.exists():
+        refresh_time = datetime.fromtimestamp(CACHE_FILE.stat().st_mtime)
+        print(f"Last Refresh  : {refresh_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    else:
+        print("Last Refresh  : No cache yet")
+        
 # =========================
 # MAIN
 # =========================
@@ -187,8 +258,11 @@ def main():
 
     schedule_prayers()
 
-    # Refresh daily
+    # Daily refresh
     schedule.every().day.at("00:01").do(schedule_prayers)
+
+    # Retry every minute (for wifi outages)
+    schedule.every(1).minutes.do(schedule_prayers)
 
     while True:
         schedule.run_pending()
@@ -202,5 +276,7 @@ if __name__ == "__main__":
         show_prayer_times()
     elif "--cached" in sys.argv:
         show_cached_times()
+    elif "--status" in sys.argv:
+        show_status()
     else:
         main()
